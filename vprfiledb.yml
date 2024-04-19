@@ -1,0 +1,57 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vprodb
+spec:
+  selector:
+    matchLabels:
+      app: vprodb
+  template:
+    metadata:
+      labels:
+        app: vprodb
+    spec:
+      containers:
+      - name: vprodb
+        image: vprofile/vprofiledb:v1
+        volumeMounts:
+         - mountPath: /var/lib/mysql
+           name: vprofile-db-data
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 3306
+        env:
+         - name: MYSQL_ROOT_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: app-secret
+            key: db-pass
+      nodeSelector:
+        zone: eu-west-3a
+      volumes:
+       - name: vprofile-db-data
+         awsElasticBlockStore:
+          volumeID: vol-0b49686dd3de6f760
+          fsType: ext4
+      initContainers:
+        - name: busybox
+          image: busybox:latest
+          args: ["rm", "-rf", "/var/lib/mysql/lost+found"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: javaweappsvc
+spec:
+  type: NodePort
+  selector:
+    app: javawebapp
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30785
+...
